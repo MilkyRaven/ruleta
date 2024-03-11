@@ -86,6 +86,92 @@ echo -e "Tu saldo final es de ${blue}$current_money${reset}€.\nDe ${blue}$tota
 echo "LLegaste a tener un máximo de ${green}$highest_money${reset}€ en la jugada número ${blue}$highest_game.${reset}"
 }
 
+function inverseLabrouchere(){
+#declaramos variables generales -> creo que podrían estar fuera de la función, revisar
+current_money=$initial_money
+declare -a sequence=(1 2 3 4)
+length=${#sequence[@]}
+last_index=$((length - 1))
+echo -e "Dinero inicial: $initial_money"
+echo -ne "¿A qué deseas apostar?" && read par_impar
+echo -e "Comenzamos con la secuencia [${sequence[@]}]"
+initial_bet=$((${sequence[0]} + ${sequence[$last_index]}))
+current_bet=$initial_bet
+echo -e "Apostamos $initial_bet y nuestra secuencia se queda en [${sequence[@]}]."
+
+tput civis
+while [ $current_money -gt 0 ]; do
+	length=${#sequence[@]}
+	last_index=$((length - 1))
+	current_money=$((current_money - current_bet))
+	echo "Nuestro dinero para esta ronda, tras la apuesta de $current_bet, es de $current_money"
+	random_number=$((RANDOM % 37))
+	echo -e "Ha salido el número ${blue}$random_number${reset}"
+  	num_result=$(($random_number % 2))
+	if [ $num_result -eq 0  ]; then
+		result="par"
+	else
+		result="impar"
+	fi
+
+  	if [ $random_number -eq 0 ]; then
+echo "Has perdido tu apuesta de $current_bet. Te quedan $current_money."
+	if [ ${#sequence[@]} -le 2 ]; then
+		echo "Como has perdido, queda 0 elementos en la secuencia, por lo cual reseteamos"
+		sequence=(1 2 3 4)
+		else
+		unset sequence[0]
+		#length=${#sequence[@]}
+		#last_index=$((length - 1))
+		unset sequence[last_index]
+	fi
+	sequence=(${sequence[@]})
+    #current bet debe actualizarse con los extremos del array
+    length=${#sequence[@]}
+	last_index=$((length - 1))
+	current_bet=$((${sequence[0]} + ${sequence[$last_index]}))
+    echo "Tras esta ronda, tienes $current_money. La secuencia actual es [${sequence[@]}]"
+  elif [ "$result" = "$par_impar" ]; then
+    echo "Has ganado"
+    reward=$((current_bet * 2))
+    sequence+=($current_bet)
+    sequence=(${sequence[@]})
+    current_money=$((current_money + reward))
+    #current bet debe actualizarse con los extremos del array
+    length=${#sequence[@]}
+	last_index=$((length - 1))
+	current_bet=$((${sequence[0]} + ${sequence[$last_index]}))
+    echo "Tras esta ronda, tienes $current_money. La secuencia actual es [${sequence[@]}]"
+  else
+	echo "Has perdido tu apuesta de $current_bet. Te quedan $current_money."
+	if [ ${#sequence[@]} -le 2 ]; then
+		echo "Solo queda uno o dos elementos en la secuencia, por lo cual reseteamos"
+		sequence=(1 2 3 4)
+		else
+		unset sequence[0]
+		#length=${#sequence[@]}
+		#last_index=$((length - 1))
+		unset sequence[last_index]
+	fi
+	sequence=(${sequence[@]})
+    #current bet debe actualizarse con los extremos del array
+    length=${#sequence[@]}
+	last_index=$((length - 1))
+	current_bet=$((${sequence[0]} + ${sequence[$last_index]}))
+    echo "Tras esta ronda, tienes $current_money. La secuencia actual es [${sequence[@]}]"
+  fi  
+if [ ${#sequence[@]} -eq 1 ]; then
+current_bet=${sequence[0]}
+fi
+if [ $current_bet -gt $current_money  ]; then
+echo "No puedes seguir apostando, tu apuesta de $current_bet supera tu cash de $current_money"
+break
+fi
+done
+echo "Se acabó el juego"
+tput cnorm
+}
+
 #definimos los argumentos que acepta nuestro script
 while getopts "m:t:h" arg; do
 	case $arg in
@@ -98,7 +184,9 @@ done
 if [ -n "$initial_money" ] && [ -n "$technique" ]; then
 	if [ "$technique" == "martingala" ]; then
 		martingala
-	else
+  elif [ "$technique" == "inverseLabrouchere" ]; then
+    inverseLabrouchere
+  else
 		echo -e "La técnica introducida no existe"
 		helpPanel
 	fi
